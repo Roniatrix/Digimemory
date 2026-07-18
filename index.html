@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DigiMemory</title>
     <style>
-        :root { --bg: #f4f7f6; --card: #ffffff; --primary: #3498db; --match: #2ecc71; --text: #2c3e50; }
+        :root { --bg: #badbad; --card: #ffffff; --primary: #3498db; --match: #2ecc71; --text: #2c3e50; }
         body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; transition: background-color 0.3s; }
         .container { display: flex; gap: 20px; width: 100%; max-width: 1000px; margin-top: 20px; align-items: flex-start; }
         .sidebar { width: 240px; background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
@@ -18,6 +18,7 @@
         .pool-item.mode-click { cursor: pointer; transition: transform 0.1s; }
         .pool-item.mode-click:hover { transform: scale(1.03); border-color: var(--primary); }
         .pool-item.mode-drag { cursor: grab; }
+        .pool-item.faded { opacity: 0.3; border-color: #d5dbdb; cursor: not-allowed; pointer-events: none; }
         .pool-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
         .usage-badge { position: absolute; top: 2px; left: 2px; background: rgba(44, 62, 80, 0.9); color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; z-index: 2; pointer-events: none; }
         .usage-badge.one { background: rgba(39, 174, 96, 0.95); }
@@ -234,11 +235,14 @@
                 if (poolItem) {
                     const badge = poolItem.querySelector('.usage-badge');
                     if (count === 0) {
+                        poolItem.classList.remove('faded');
                         badge.style.background = 'gray';
                     } else if (count === 1) {
                         badge.style.background = 'green';
+                        poolItem.classList.remove('faded');
                     } else if (count === 2) {
                         badge.style.background = 'red';
+                        poolItem.classList.add('faded');
                     }
                     badge.innerText = count;
                 }
