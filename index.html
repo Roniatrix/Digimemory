@@ -69,31 +69,36 @@
             for (let i = 0; i < files.length; i++) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    imgIdCounter++;
-                    const id = 'img-' + imgIdCounter;
-                    uploadedImagesRegistry[id] = event.target.result;
-
-                    const item = document.createElement('div');
-                    item.className = 'pool-item';
-                    item.id = 'pool-' + id;
-                    item.dataset.imgId = id;
-
-                    const badge = document.createElement('span');
-                    badge.className = 'usage-badge';
-                    badge.innerText = '0';
-                    item.appendChild(badge);
-
-                    const img = document.createElement('img');
-                    img.src = event.target.result;
-                    item.appendChild(img);
-                    pool.appendChild(item);
-
-                    bindPoolItemEvents(item, id, event.target.result);
+                    addImage(event.target.result);
                 };
                 reader.readAsDataURL(files[i]);
             }
             e.target.value = '';
         }
+
+        function addImage(src) {
+            imgIdCounter++;
+            const id = 'img-' + imgIdCounter;
+            uploadedImagesRegistry[id] = src;
+
+            const item = document.createElement('div');
+            item.className = 'pool-item';
+            item.id = 'pool-' + id;
+            item.dataset.imgId = id;
+
+            const badge = document.createElement('span');
+            badge.className = 'usage-badge';
+            badge.innerText = '0';
+            item.appendChild(badge);
+
+            const img = document.createElement('img');
+            img.src = src
+            item.appendChild(img);
+            pool.appendChild(item);
+
+            bindPoolItemEvents(item, id, event.target.result);
+        }
+            
 
         function bindPoolItemEvents(item, id, src) {
             const isDragDrop = document.getElementById('modeToggle').checked;
@@ -245,6 +250,11 @@
             updateCountersAndMatches();
         }
 
+        let images = 12;
+        for (let i = 1; i <= 12; i++) {
+            addImage(`/Digimemory/00${i}.png`);
+        }
+            
         window.onload = generateGrid;
     </script>
 </body>
