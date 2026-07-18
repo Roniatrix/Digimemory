@@ -126,7 +126,7 @@
         }
 
         function generateGrid() {
-            const rows = parseInt(document.getElementById('rows').value) || 4;
+            const rows = parseInt(document.getElementById('rows').value) || 6;
             const cols = parseInt(document.getElementById('cols').value) || 4;
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
@@ -251,7 +251,7 @@
         }
 
         let images = 12;
-        for (let i = 1; i <= 12; i++) {
+        for (let i = 1; i <= images; i++) {
             let imageSrc = i.toString().padStart(3, '0');
             addImage(`/Digimemory/${imageSrc}.png`);
         }
