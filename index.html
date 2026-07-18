@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigiMemory</title>
+    <style>
+        :root { --bg: #f4f7f6; --card: #ffffff; --primary: #3498db; --match: #2ecc71; --text: #2c3e50; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { display: flex; gap: 20px; width: 100%; max-width: 1000px; margin-top: 20px; align-items: flex-start; }
+        .sidebar { width: 240px; background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
+        .upload-lbl { display: block; background: var(--primary); color: #fff; padding: 10px; border-radius: 4px; cursor: pointer; text-align: center; font-weight: bold; margin-bottom: 15px; }
+        #fileInput { display: none; }
+        .mode-container { background: #eee; padding: 8px; border-radius: 6px; margin-bottom: 15px; text-align: center; }
+        .mode-container label { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .pool { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; overflow-y: auto; padding: 2px; }
+        .pool-item { aspect-ratio: 3/4; border: 2px solid #bdc3c7; border-radius: 6px; overflow: hidden; background: #eee; position: relative; }
+        .pool-item.mode-click { cursor: pointer; transition: transform 0.1s; }
+        .pool-item.mode-click:hover { transform: scale(1.03); border-color: var(--primary); }
+        .pool-item.mode-drag { cursor: grab; }
+        .pool-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        .usage-badge { position: absolute; top: 2px; left: 2px; background: rgba(44, 62, 80, 0.9); color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; z-index: 2; pointer-events: none; }
+        .usage-badge.one { background: rgba(39, 174, 96, 0.95); }
+        .usage-badge.maxed { background: rgba(250, 100, 100, 0.95); }
+        .main { flex-grow: 1; display: flex; flex-direction: column; align-items: center; }
+        .controls { background: var(--card); padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; width: 100%; text-align: center; box-sizing: border-box; }
+        input[type="number"], button { padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; margin: 5px; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; }
+        .grid { display: grid; gap: 10px; width: 100%; max-width: 450px; }
+        .card { background: var(--card); border: 2px dashed #bdc3c7; border-radius: 6px; aspect-ratio: 3/4; display: flex; position: relative; overflow: hidden; justify-content: center; align-items: center; }
+        .card.drag-active { border-color: var(--primary); background: #e8f4f8; }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        .card.is-match { border: 3px solid var(--match); box-shadow: 0 0 10px rgba(46, 204, 113, 0.5); }
+        .card-idx { position: absolute; bottom: 2px; left: 2px; font-size: 11px; background: rgba(255,255,255,0.8); padding: 1px 4px; border-radius: 3px; pointer-events: none; z-index: 2; }
+        .rem-btn { position: absolute; top: 2px; right: 2px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; z-index: 2; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="sidebar">
+            <label for="fileInput" class="upload-lbl">📁 Upload Images</label>
+            <input type="file" id="fileInput" accept="image/*" multiple onchange="handleUpload(event)">
+            <div class="mode-container">
+                <label><input type="checkbox" id="modeToggle" onchange="updateInteractionModes()"> Enable Drag &amp; Drop</label>
+            </div>
+            <div id="pool" class="pool"></div>
+        </div>
+
+        <div class="main">
+            <div class="controls">
+                <label>Rows: <input type="number" id="rows" value="4" min="2" max="10" style="width: 45px;"></label>
+                <label>Cols: <input type="number" id="cols" value="4" min="2" max="10" style="width: 45px;"></label>
+                <button onclick="generateGrid()">Generate Board</button>
+                <button onclick="clearGrid()" style="background:#e74c3c;">Reset Board</button>
+            </div>
+            <div id="grid" class="grid"></div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT GOES BELOW THIS LINE -->
+        <script>
+        let imgIdCounter = 0;
+        const uploadedImagesRegistry = {};
+
+        function handleUpload(e) {
+            const files = e.target.files;
+            const pool = document.getElementById('pool');
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imgIdCounter++;
+                    const id = 'img-' + imgIdCounter;
+                    uploadedImagesRegistry[id] = event.target.result;
+
+                    const item = document.createElement('div');
+                    item.className = 'pool-item';
+                    item.id = 'pool-' + id;
+                    item.dataset.imgId = id;
+
+                    const badge = document.createElement('span');
+                    badge.className = 'usage-badge';
+                    badge.innerText = '0';
+                    item.appendChild(badge);
+
+                    const img = document.createElement('img');
+                    img.src = event.target.result;
+                    item.appendChild(img);
+                    pool.appendChild(item);
+
+                    bindPoolItemEvents(item, id, event.target.result);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+            e.target.value = '';
+        }
+
+        function bindPoolItemEvents(item, id, src) {
+            const isDragDrop = document.getElementById('modeToggle').checked;
+            item.onclick = null;
+            item.draggable = false;
+
+            if (isDragDrop) {
+                item.className = 'pool-item mode-drag';
+                item.draggable = true;
+                item.ondragstart = (ev) => {
+                    ev.dataTransfer.setData('text/plain', id);
+                    ev.dataTransfer.setData('src', src);
+                };
+            } else {
+                item.className = 'pool-item mode-click';
+                item.onclick = () => fillFirstAvailableSlot(id, src);
+            }
+        }
+
+        function updateInteractionModes() {
+            document.querySelectorAll('.pool-item').forEach(item => {
+                const id = item.dataset.imgId;
+                bindPoolItemEvents(item, id, uploadedImagesRegistry[id]);
+            });
+        }
+
+        function generateGrid() {
+            const rows = parseInt(document.getElementById('rows').value) || 4;
+            const cols = parseInt(document.getElementById('cols').value) || 4;
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+            for (let i = 0; i < rows * cols; i++) {
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                const idx = document.createElement('span');
+                idx.className = 'card-idx';
+                idx.innerText = i + 1;
+                card.appendChild(idx);
+
+                card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drag-active'); });
+                card.addEventListener('dragleave', () => card.classList.remove('drag-active'));
+                card.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    card.classList.remove('drag-active');
+                    const id = e.dataTransfer.getData('text/plain');
+                    const src = e.dataTransfer.getData('src');
+                    if (id && src) placeImageInCard(card, id, src);
+                });
+
+                grid.appendChild(card);
+            }
+            updateCountersAndMatches();
+        }
+
+        function fillFirstAvailableSlot(id, src) {
+            const cards = document.querySelectorAll('.card');
+            for (let i = 0; i < cards.length; i++) {
+                if (!cards[i].dataset.imgId) {
+                    placeImageInCard(cards[i], id, src);
+                    break;
+                }
+            }
+        }
+
+        function placeImageInCard(card, id, src) {
+            const oldImg = card.querySelector('.placed-img'); if (oldImg) oldImg.remove();
+            const oldBtn = card.querySelector('.rem-btn'); if (oldBtn) oldBtn.remove();
+
+            card.dataset.imgId = id;
+            card.style.borderStyle = 'solid';
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = 'placed-img';
+            card.appendChild(img);
+
+            const btn = document.createElement('button');
+            btn.className = 'rem-btn';
+            btn.innerHTML = '&times;';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                img.remove();
+                btn.remove();
+                delete card.dataset.imgId;
+                card.style.borderStyle = 'dashed';
+                updateCountersAndMatches();
+            };
+            card.appendChild(btn);
+            updateCountersAndMatches();
+        }
+
+        function updateCountersAndMatches() {
+            const cards = document.querySelectorAll('.card');
+            const matchGroups = {};
+            const placementCounts = {};
+
+            for (const id in uploadedImagesRegistry) placementCounts[id] = 0;
+            cards.forEach(c => c.classList.remove('is-match'));
+
+            cards.forEach(c => {
+                const id = c.dataset.imgId;
+                if (id) {
+                    placementCounts[id] = (placementCounts[id] || 0) + 1;
+                    if (!matchGroups[id]) matchGroups[id] = [];
+                    matchGroups[id].push(c);
+                }
+            });
+
+            for (const id in matchGroups) {
+                if (matchGroups[id].length > 1) {
+                    matchGroups[id].forEach(c => c.classList.add('is-match'));
+                }
+            }
+
+            for (const id in placementCounts) {
+                const poolItem = document.getElementById('pool-' + id);
+                if (poolItem) {
+                    const badge = poolItem.querySelector('.usage-badge');
+                    const count = placementCounts[id];
+
+                    if (count === 0) {
+                        badge.style.background = 'gray';
+                    }
+                    else if (count === 1) {
+                        badge.style.background = 'green';
+                    } else if (count === 2) {
+                        badge.style.background = 'red';
+                    }
+
+                    // badge.style.background = '
+                    badge.innerText = count;
+                  //  badge.className = count == 1 ? 'usage-badge one' : 'usage-badge';
+                    // badge.className = count >= 2 ? 'usage-badge maxed' : 'usage-badge';
+                }
+            }
+        }
+
+        function clearGrid() {
+            document.querySelectorAll('.card').forEach(c => {
+                const img = c.querySelector('.placed-img'); if (img) img.remove();
+                const btn = c.querySelector('.rem-btn'); if (btn) btn.remove();
+                delete c.dataset.imgId;
+                c.style.borderStyle = 'dashed';
+            });
+            updateCountersAndMatches();
+        }
+
+        window.onload = generateGrid;
+    </script>
+</body>
+</html>
+
