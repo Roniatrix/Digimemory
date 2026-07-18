@@ -252,7 +252,8 @@
 
         let images = 12;
         for (let i = 1; i <= 12; i++) {
-            addImage(`/Digimemory/00${i}.png`);
+            let imageSrc = i.toString().padStart(3, '0');
+            addImage(`/Digimemory/${imageSrc}.png`);
         }
             
         window.onload = generateGrid;
